@@ -2,6 +2,11 @@ from django.shortcuts import render
 from rest_framework import generics
 from .serializers import UserSerializer, PostSerializer
 from .models import User, Post
+from django.core.cache import cache
+from django.conf import settings
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 class UserView(generics.ListCreateAPIView):
 
@@ -17,8 +22,15 @@ class UserView(generics.ListCreateAPIView):
 class UserDetailsView(generics.RetrieveUpdateDestroyAPIView):
     """This class handles the http GET, PUT and DELETE requests."""
 
-    queryset = User.objects.all()
-    serializer_class = UserSerializer  
+    if 'user' in cache:
+        #get results from cache
+        queryset = cache.get('user')
+
+    else:
+        queryset = User.objects.all()
+        serializer_class = UserSerializer  
+        # store data in cache
+        cache.set('user', 'serializer_class', timeout=CACHE_TTL)
 
 
 class PostView(generics.ListCreateAPIView):
